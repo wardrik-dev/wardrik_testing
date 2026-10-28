@@ -52,6 +52,12 @@ defmodule WardrikTesting.ServerTest do
     assert {:error, %Wardrik.Error{type: :not_found}} =
              Wardrik.Agent.definition(scope, "acme/other")
 
+    :ok = Server.add_agent(name, "acme/books", ["chat"], "Keeps the books.")
+    assert {:ok, [_triage, %Wardrik.Agent{id: "acme/books"}]} = Wardrik.Agents.list(scope)
+
+    assert {:ok, %Wardrik.Definition{description: "Keeps the books."}, []} =
+             Wardrik.Agent.definition(scope, "acme/books")
+
     :ok = Server.offer_agents(name, [])
     assert {:ok, []} = Wardrik.Agents.list(scope)
   end

@@ -37,7 +37,7 @@ defmodule WardrikTesting.Server do
   @doc """
   Starts the server for the calling test under `name`, which the test is registered as. Takes
   `:secrets`, the API tokens it knows, each acting for `acme/@maria` as an owner, and `:offered`,
-  the agents it offers, each as `{id, channels}`.
+  the agents it offers, each as `{id, channels}` or `{id, channels, description}`.
   """
   @spec start(atom(), keyword()) :: :ok
   def start(name, opts \\ []) do
@@ -61,6 +61,11 @@ defmodule WardrikTesting.Server do
   @doc "Stops `secret` working."
   @spec revoke(atom(), String.t()) :: :ok
   def revoke(name, secret), do: update(name, &%{&1 | secrets: MapSet.delete(&1.secrets, secret)})
+
+  @doc "Offers the agent `id` too, answering in `channels`, described as `description` where given."
+  @spec add_agent(atom(), String.t(), [String.t()], String.t() | nil) :: :ok
+  def add_agent(name, id, channels, description \\ nil),
+    do: update(name, &%{&1 | offered: &1.offered ++ [{id, channels, description}]})
 
   @doc "Offers `offered` in place of what the server offered, each as `{id, channels}`."
   @spec offer_agents(atom(), [{String.t(), [String.t()]}]) :: :ok
@@ -133,7 +138,9 @@ defmodule WardrikTesting.Server do
 
   defp answer(%Scope{wardrik: name}, "agents.list", _input) do
     agents =
-      for {id, _channels} <- state(name).offered, do: %{"id" => id, "name" => Path.basename(id)}
+      for offered <- state(name).offered,
+          id = elem(offered, 0),
+          do: %{"id" => id, "name" => Path.basename(id)}
 
     {:ok, %{"agents" => agents}}
   end
@@ -161,8 +168,11 @@ defmodule WardrikTesting.Server do
     end
   end
 
-  defp defined({agent, channels}, agent) do
-    definition = %{"model" => "m", "channels" => channels, "description" => "Answers #{agent}."}
+  defp defined({agent, channels}, agent), do: defined({agent, channels, nil}, agent)
+
+  defp defined({agent, channels, description}, agent) do
+    described = description || "Answers #{agent}."
+    definition = %{"model" => "m", "channels" => channels, "description" => described}
     {:ok, %{"definition" => definition, "missing" => []}}
   end
 
