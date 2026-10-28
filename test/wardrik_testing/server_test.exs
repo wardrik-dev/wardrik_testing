@@ -41,6 +41,9 @@ defmodule WardrikTesting.ServerTest do
 
     assert {:error, %Wardrik.Error{type: :not_found}} =
              Wardrik.Agent.forget(scope, "acme/missing")
+
+    assert {:error, %Wardrik.Error{type: :not_found}} =
+             Wardrik.Agent.ask(scope, "acme/missing/t1", "Hi")
   end
 
   test "lists and defines the agents it offers", %{name: name, scope: scope} do

@@ -13,7 +13,7 @@ defmodule WardrikTesting.Server do
   message, and `{:offered, worker, tools}` for each worker's tools.
 
   An operation answers the protocol's own example of what it gives, or nothing. An agent the test
-  names as `acme/missing` isn't found. The agents the test `offered` are listed and defined with
+  names as `acme/missing`, or any conversation of it, isn't found. The agents the test `offered` are listed and defined with
   the channels it gave each, and a conversation waits on a person, or doesn't, as its turns left
   it. A message is answered as `WardrikTesting.Script` says, written into the conversation's log
   where the test started `events/1`. See `start/2`.
@@ -133,8 +133,8 @@ defmodule WardrikTesting.Server do
     :ok
   end
 
-  defp answer(_scope, _id, %{"agent" => "acme/missing"}),
-    do: {:error, Error.new(:not_found, "There's no agent acme/missing.")}
+  defp answer(_scope, _id, %{"agent" => "acme/missing" <> _rest = agent}),
+    do: {:error, Error.new(:not_found, "There's no agent #{agent}.")}
 
   defp answer(%Scope{wardrik: name}, "agents.list", _input) do
     agents =
