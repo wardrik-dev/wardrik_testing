@@ -8,7 +8,7 @@ defmodule WardrikTesting.Script do
     * Any other is answered `Answered: ` and what it said.
 
   Deciding the call answers `Done.`, by whoever the scope is, where it may decide the call; anyone
-  else is refused. Cancelling stops the run.
+  else is refused. A denial without a reason is `Rejected.`, as the hub's is. Cancelling stops the run.
   """
 
   alias Wardrik.Error
@@ -64,13 +64,16 @@ defmodule WardrikTesting.Script do
       scope,
       conversation,
       "interrupt.resolved",
-      Map.merge(resolved, Map.take(input, ["note", "reason"]))
+      Map.merge(resolved, said(id, input))
     )
 
     Server.hold(name, conversation, {"idle", []})
     answered(scope, conversation, "Done.")
     {:ok, %{"decisions" => [%{"id" => call, "decision" => decision}]}}
   end
+
+  defp said("agent.deny", input), do: %{"reason" => input["reason"] || "Rejected."}
+  defp said(_approve, input), do: Map.take(input, ["note"])
 
   defp decides?(%Scope{grants: grants}, conversation) do
     {:ok, resource} = Wardrik.Resource.agent(conversation)

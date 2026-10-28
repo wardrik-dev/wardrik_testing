@@ -100,6 +100,15 @@ defmodule WardrikTesting.ServerTest do
 
     assert {:ok, %Wardrik.Agent{status: :idle}} = Wardrik.Agent.read(scope, "acme/triage/t1")
 
+    Wardrik.Agent.ask(scope, "acme/triage/t3", "echo")
+    Wardrik.Agent.deny(decider, "acme/triage/t3", "call_1")
+
+    assert_receive {WardrikEvents, "acme/triage/t3",
+                    %{
+                      "type" => "wardrik.interrupt.resolved",
+                      "data" => %{"reason" => "Rejected."}
+                    }}
+
     Wardrik.Agent.ask(scope, "acme/triage/t2", "echo")
     assert :ok = Wardrik.Agent.cancel(scope, "acme/triage/t2")
     assert_receive {WardrikEvents, "acme/triage/t2", %{"type" => "wardrik.run.cancelled"}}
