@@ -4,7 +4,7 @@ defmodule WardrikTesting.MixProject do
   def project do
     [
       app: :wardrik_testing,
-      version: "0.1.0",
+      version: "0.1.0-rc.1",
       elixir: "~> 1.20",
       description:
         "What a package built on Wardrik's protocol tests with: a server that runs Wardrik's operations as a script.",
