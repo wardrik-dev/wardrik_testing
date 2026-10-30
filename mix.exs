@@ -58,9 +58,9 @@ defmodule WardrikTesting.MixProject do
 
   defp deps do
     [
-      {:wardrik_protocol, path: "../wardrik_protocol"},
-      {:wardrik_events, path: "../wardrik_events"},
-      {:wardrik_store, path: "../wardrik_store"},
+      sibling(:wardrik_protocol),
+      sibling(:wardrik_events),
+      sibling(:wardrik_store),
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
@@ -69,5 +69,13 @@ defmodule WardrikTesting.MixProject do
       {:reach, "~> 2.8", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
+  end
+
+  # Wardrik's own packages come from Hex, or from their checkouts beside this one with
+  # WARDRIK_LOCAL=1.
+  defp sibling(name, opts \\ []) do
+    if System.get_env("WARDRIK_LOCAL"),
+      do: {name, Keyword.put(opts, :path, "../#{name}")},
+      else: {name, "~> 0.1.0-rc.1", opts}
   end
 end
