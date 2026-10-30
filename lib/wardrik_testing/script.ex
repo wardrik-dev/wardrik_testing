@@ -1,21 +1,30 @@
 defmodule WardrikTesting.Script do
   @moduledoc """
-  How `WardrikTesting.Server` answers a message: as a run does, written into the conversation's log
-  in the server's `WardrikTesting.Server.events/1`, where the test started them.
+  How `WardrikTesting.Server` answers messages.
 
-    * A message saying `echo` waits on the call `call_1`, to `echo` with `%{"text" => "hi"}`.
-    * A message saying `fail` fails, as `It broke.`
-    * Any other is answered `Answered: ` and what it said.
+  Each answer is written to the conversation's log as a run's events would be. Nothing is written
+  unless the test started `WardrikEvents` under `WardrikTesting.Server.events/1`.
 
-  Deciding the call answers `Done.`, by whoever the scope is, where it may decide the call; anyone
-  else is refused. A denial without a reason is `Rejected.`, as the hub's is. Cancelling stops the run.
+  ## Messages
+
+    * `echo` waits on the call `call_1`, to the `echo` tool with `%{"text" => "hi"}`.
+    * `fail` fails with `"It broke."`.
+    * Anything else is answered `"Answered: "` followed by the message.
+
+  ## Decisions
+
+    * Approving or denying `call_1` answers `"Done."`.
+    * Only a scope granted `agent.decide` on the conversation may decide. Others get `:forbidden`.
+    * A denial without a reason is recorded as `"Rejected."`, as the hub does.
+
+  Cancelling stops the run.
   """
 
   alias Wardrik.Error
   alias Wardrik.Scope
   alias WardrikTesting.Server
 
-  @doc "Answers the message `input` gives, as `agent.ask` does."
+  @doc "Answers the message in `input`, as `agent.ask` does."
   @spec ask(Scope.t(), map()) :: {:ok, map()}
   def ask(%Scope{wardrik: name} = scope, %{"agent" => conversation, "content" => text} = input) do
     Server.tell(name, {:asked, conversation, text, scope.principal.id})
@@ -35,7 +44,7 @@ defmodule WardrikTesting.Script do
     {:ok, %{"message" => %{"id" => message, "cursor" => "c"}}}
   end
 
-  @doc "Decides the call `input` names, as `agent.approve` and `agent.deny` do."
+  @doc "Approves or denies the call in `input`, as `agent.approve` and `agent.deny` do."
   @spec decide(Scope.t(), String.t(), map()) :: {:ok, map()} | {:error, Error.t()}
   def decide(scope, id, %{"agent" => conversation} = input) do
     if decides?(scope, conversation),
@@ -43,7 +52,7 @@ defmodule WardrikTesting.Script do
       else: {:error, Error.new(:forbidden, "You may not decide this.")}
   end
 
-  @doc "Stops the run `input` names, as `agent.cancel` does."
+  @doc "Cancels the run in `input`, as `agent.cancel` does."
   @spec cancel(Scope.t(), map()) :: {:ok, nil}
   def cancel(%Scope{wardrik: name} = scope, %{"agent" => conversation}) do
     Server.hold(name, conversation, {"idle", []})

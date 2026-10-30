@@ -1,22 +1,32 @@
 defmodule WardrikTesting.Server do
   @moduledoc """
-  A `Wardrik.Server` for a test, under a name of the test's own, that runs Wardrik's operations as
-  a script, so a package built on the protocol tests without a Wardrik.
+  A `Wardrik.Server` that answers from a script, for testing packages without Wardrik.
 
       setup do
         :ok = WardrikTesting.Server.start(:my_test, secrets: ["wrk_good"])
         %{scope: Wardrik.Scope.new(WardrikTesting.Server, :my_test, "acme/@maria")}
       end
 
-  The test is sent what the server is asked: `{:ran, id, input}` for each operation,
-  `{:streamed, id, input}` for each stream, `{:asked, conversation, text, principal_id}` for each
-  message, and `{:offered, worker, tools}` for each worker's tools.
+  ## Messages
 
-  An operation answers the protocol's own example of what it gives, or nothing. An agent the test
-  names as `acme/missing`, or any conversation of it, isn't found. The agents the test `offered` are listed and defined with
-  the channels it gave each, and a conversation waits on a person, or doesn't, as its turns left
-  it. A message is answered as `WardrikTesting.Script` says, written into the conversation's log
-  where the test started `events/1`. See `start/2`.
+  The calling test is sent:
+
+    * `{:ran, id, input}` for each operation.
+    * `{:streamed, id, input}` for each stream.
+    * `{:asked, conversation, text, principal_id}` for each message.
+    * `{:offered, worker, tools}` for each worker's tools.
+
+  ## Answers
+
+    * An operation returns the protocol's example output, or `nil` if it has none.
+    * `acme/missing`, and any conversation under it, isn't found.
+    * The agents given as `:offered` are listed and defined with their channels.
+    * `agent.read` reports whether the conversation is waiting on a person, as its last turn left it.
+    * A message is answered as `WardrikTesting.Script` describes. The events are written to the
+      conversation's log if the test started `events/1`.
+    * A stream with `"after" => "nope"` fails with `:invalid_request`.
+    * Following `acme/broken` fails partway. Following `acme/waiting` waits on `call_1`. Following
+      any other agent replies `"Re: "` followed by the input.
   """
 
   @behaviour Wardrik.Server
@@ -35,9 +45,15 @@ defmodule WardrikTesting.Server do
   }
 
   @doc """
-  Starts the server for the calling test under `name`, which the test is registered as. Takes
-  `:secrets`, the API tokens it knows, each acting for `acme/@maria` as an owner, and `:offered`,
-  the agents it offers, each as `{id, channels}` or `{id, channels, description}`.
+  Starts the server for the calling test under `name`.
+
+  Registers the test process as `name`, and stops the server when the test ends.
+
+  ## Options
+
+    * `:secrets` - API tokens it accepts. Each acts for `acme/@maria` as an owner. `[]` unless set.
+    * `:offered` - agents it offers, each as `{id, channels}` or `{id, channels, description}`.
+      `[]` unless set.
   """
   @spec start(atom(), keyword()) :: :ok
   def start(name, opts \\ []) do
@@ -54,20 +70,20 @@ defmodule WardrikTesting.Server do
     :ok
   end
 
-  @doc "Returns the name of the `WardrikEvents` the server writes a turn into, for the test to start."
+  @doc "Returns the name to start `WardrikEvents` under, so turns are written to it."
   @spec events(atom()) :: atom()
   def events(name), do: Module.concat(name, Events)
 
-  @doc "Stops `secret` working."
+  @doc "Revokes `secret`, so it no longer authenticates."
   @spec revoke(atom(), String.t()) :: :ok
   def revoke(name, secret), do: update(name, &%{&1 | secrets: MapSet.delete(&1.secrets, secret)})
 
-  @doc "Offers the agent `id` too, answering in `channels`, described as `description` where given."
+  @doc "Adds the agent `id` to those offered, answering in `channels`."
   @spec add_agent(atom(), String.t(), [String.t()], String.t() | nil) :: :ok
   def add_agent(name, id, channels, description \\ nil),
     do: update(name, &%{&1 | offered: &1.offered ++ [{id, channels, description}]})
 
-  @doc "Offers `offered` in place of what the server offered, each as `{id, channels}`."
+  @doc "Replaces the agents offered with `offered`, each as `{id, channels}`."
   @spec offer_agents(atom(), [{String.t(), [String.t()]}]) :: :ok
   def offer_agents(name, offered), do: update(name, &%{&1 | offered: offered})
 
