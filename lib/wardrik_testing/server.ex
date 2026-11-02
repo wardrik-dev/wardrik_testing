@@ -4,7 +4,8 @@ defmodule WardrikTesting.Server do
 
       setup do
         :ok = WardrikTesting.Server.start(:my_test, secrets: ["wrk_good"])
-        %{scope: Wardrik.Scope.new(WardrikTesting.Server, :my_test, "acme/@maria")}
+        scope = Wardrik.Scope.new(WardrikTesting.Server, wardrik: :my_test, principal: "acme/@maria")
+        %{scope: scope}
       end
 
   ## Messages
@@ -103,8 +104,12 @@ defmodule WardrikTesting.Server do
   @impl Wardrik.Server
   def authenticate(name, secret) do
     case MapSet.member?(state(name).secrets, secret) do
-      true -> {:ok, Scope.new(__MODULE__, name, "acme/@maria", roles: [:owner], resources: ["*"])}
-      false -> {:error, Error.new(:unauthorized, "That isn't a token here.")}
+      true ->
+        grants = [roles: [:owner], resources: ["*"]]
+        {:ok, Scope.new(__MODULE__, wardrik: name, principal: "acme/@maria", grants: grants)}
+
+      false ->
+        {:error, Error.new(:unauthorized, "That isn't a token here.")}
     end
   end
 

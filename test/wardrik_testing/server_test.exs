@@ -19,7 +19,12 @@ defmodule WardrikTesting.ServerTest do
 
     %{
       name: name,
-      scope: Scope.new(Server, name, "acme/@ana", roles: [:messenger, :reader], resources: ["*"])
+      scope:
+        Scope.new(Server,
+          wardrik: name,
+          principal: "acme/@ana",
+          grants: [roles: [:messenger, :reader], resources: ["*"]]
+        )
     }
   end
 
@@ -152,7 +157,13 @@ defmodule WardrikTesting.ServerTest do
     name = :"quiet #{context.test}"
     Process.unregister(context.name)
     :ok = Server.start(name)
-    scope = Scope.new(Server, name, "acme/@ana", roles: [:messenger], resources: ["*"])
+
+    scope =
+      Scope.new(Server,
+        wardrik: name,
+        principal: "acme/@ana",
+        grants: [roles: [:messenger], resources: ["*"]]
+      )
 
     assert {:ok, %Wardrik.Message{}} = Wardrik.Agent.ask(scope, "acme/triage/t1", "Hi")
   end
