@@ -80,10 +80,16 @@ defmodule WardrikTesting.Server do
   @spec revoke(atom(), String.t()) :: :ok
   def revoke(name, secret), do: update(name, &%{&1 | secrets: MapSet.delete(&1.secrets, secret)})
 
-  @doc "Adds the agent `id` to those offered, answering in `channels`."
-  @spec add_agent(atom(), String.t(), [String.t()], String.t() | nil) :: :ok
-  def add_agent(name, id, channels, description \\ nil),
-    do: update(name, &%{&1 | offered: &1.offered ++ [{id, channels, description}]})
+  @doc """
+  Adds the agent `:id` to those offered, answering in `:channels`, with any `:description`.
+
+      :ok = WardrikTesting.Server.add_agent(:my_test, id: "acme/books", channels: ["chat"])
+  """
+  @spec add_agent(atom(), keyword()) :: :ok
+  def add_agent(name, agent) do
+    offered = {Keyword.fetch!(agent, :id), Keyword.fetch!(agent, :channels), agent[:description]}
+    update(name, &%{&1 | offered: &1.offered ++ [offered]})
+  end
 
   @doc "Replaces the agents offered with `offered`, each as `{id, channels}`."
   @spec offer_agents(atom(), [{String.t(), [String.t()]}]) :: :ok
