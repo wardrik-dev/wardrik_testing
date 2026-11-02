@@ -33,6 +33,7 @@ defmodule WardrikTesting.Server do
 
   alias Wardrik.Error
   alias Wardrik.Scope
+  alias Wardrik.Server.Request
   alias WardrikTesting.Script
 
   @event %{
@@ -108,29 +109,33 @@ defmodule WardrikTesting.Server do
   end
 
   @impl Wardrik.Server
-  def run(%Scope{wardrik: name} = scope, id, input) do
+  def run(%Request{scope: %Scope{wardrik: name} = scope, operation: id, input: input}) do
     tell(name, {:ran, id, input})
     answer(scope, id, input)
   end
 
   @impl Wardrik.Server
-  def stream(%Scope{wardrik: name}, id, %{"after" => "nope"} = input) do
+  def stream(%Request{
+        scope: %Scope{wardrik: name},
+        operation: id,
+        input: %{"after" => "nope"} = input
+      }) do
     tell(name, {:streamed, id, input})
     {:error, Error.new(:invalid_request, "That cursor doesn't read.")}
   end
 
-  def stream(%Scope{wardrik: name}, id, input) do
+  def stream(%Request{scope: %Scope{wardrik: name}, operation: id, input: input}) do
     tell(name, {:streamed, id, input})
     {:ok, Stream.concat([{@event, "cursor-1"}], Stream.repeatedly(&quiet/0))}
   end
 
   @impl Wardrik.Server
-  def follow(_scope, "acme/broken", _input, _opts), do: [{:text, "Half"}, {:failed, :boom}]
+  def follow(%{agent: "acme/broken"}, _opts), do: [{:text, "Half"}, {:failed, :boom}]
 
-  def follow(_scope, "acme/waiting", _input, _opts),
+  def follow(%{agent: "acme/waiting"}, _opts),
     do: [{:waiting, [%Wardrik.Interrupt{id: "call_1", reason: :tool_approval}]}]
 
-  def follow(_scope, _agent, input, _opts),
+  def follow(%{input: input}, _opts),
     do: [
       {:text, "Re: "},
       {:text, input},
